@@ -1,16 +1,37 @@
-# React + Vite
+# 3D Potion
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Small React Three Fiber scene that renders a glass potion bottle (layered GLB parts) with a tweakable environment and live tuning controls.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Layered bottle parts in `public/models/` (outer/inner/fresnel/cap).
+- Transmissive glass + custom fresnel rim materials for edge highlights.
+- Environment lighting via HDRI and/or a controllable `Lightformer`.
+- Leva panel for bottle orientation, lighting, fresnel parameters, and motion settings.
+- Mobile motion hook using `devicemotion` `accelerationIncludingGravity` to output a smoothed "gravity vector" (for future slosh work).
 
-## React Compiler
+## Getting started
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+npm install
+npm run dev
+```
 
-## Expanding the ESLint configuration
+## Mobile motion notes
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- iOS requires a user gesture: tap the in-app "Enable Motion Access" button.
+- Some browsers require HTTPS before motion events will fire.
+
+## Useful scripts
+
+```bash
+npm run lint
+npm run build
+```
+
+## Project structure
+
+- `src/App.jsx`: scene composition + Leva control wiring.
+- `src/potion/`: bottle model layers + materials.
+- `src/components/SceneEnvironment.jsx`: HDRI/Lightformer environment.
+- `src/hooks/useDeviceMotionGravity.js`: smoothed gravity vector + optional jerk.
