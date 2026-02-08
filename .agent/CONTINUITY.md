@@ -21,6 +21,11 @@
 - 2026-02-08T11:33:28+08:00 [CODE] Split `useDeviceMotionGravity` + environment helpers out of `src/App.jsx` into `src/hooks/` + `src/components/` for readability.
 - 2026-02-08T13:34:21+08:00 [CODE] Add a fake liquid layer: slosh plane normal uses a damped spring toward `-gravity` in bottle-local space; fill maps to a sphere plane offset (volume-stable while tilting) and clips a liquid sphere.
 - 2026-02-08T19:07:21+08:00 [CODE] Cleanup repo layout: remove accidentally tracked nested `3dpotion/` mirror and untrack `model/source/*`; keep only one app tree at repo root and ignore `model/`.
+- 2026-02-08T11:35:44Z [CODE] Add a fullscreen loading overlay + a small scene-ready signal so the potion models only reveal after assets load and the `Bounds`/`Center` transforms settle.
+- 2026-02-08T11:41:55Z [CODE] `SceneReadySignal` should re-schedule on every effect setup (no one-shot ref guard) so React StrictMode dev re-runs still trigger `onReady`.
+- 2026-02-08T13:12:54Z [CODE] Use `Bounds maxDuration` close to zero so the camera fit animation finishes before the loading overlay fades out (prevents perceived “inner bottle snap” from refraction/parallax during camera settle).
+- 2026-02-08T13:21:13Z [CODE] Increase `MeshTransmissionMaterial` `samples` and (outer glass) `resolution` to reduce visible pixelation along transmission/refraction edges.
+- 2026-02-08T13:26:36Z [CODE] Auto-select transmission quality by device: mobile uses `samples=4,resolution=1024`, desktop uses `samples=8,resolution=2048`.
 
 [PROGRESS]
 - 2026-02-08T09:11:19+08:00 [CODE] [MILESTONE] Compacted this file into milestones; detailed per-iteration bullets removed to reduce drift/bloat.
@@ -30,6 +35,10 @@
 - 2026-02-08T10:46:02+08:00 [TOOL] Node/npm are still not available in this Codex environment (`node: command not found`, `npm: command not found`), so refactors could not be verified via `npm run lint`/`npm run build` here.
 - 2026-02-07T15:59:03+08:00 [CODE] `transmissionSampler` uses the global transmission pass which excludes other transparent/transmissive objects; nested glass layers may not appear through refraction.
 - 2026-02-07T23:55:10+08:00 [CODE] Throttle motion-to-React state updates; keep per-event vectors in refs to avoid perf issues in transmissive scenes.
+- 2026-02-08T11:35:44Z [TOOL] Node/npm are available here (`node v24.13.0`, `npm v11.6.2`); verified `npm run lint` and `npm run build` succeed.
+- 2026-02-08T11:41:55Z [CODE] StrictMode effect replay can cancel the first `requestAnimationFrame`; combining cleanup cancel + a one-shot ref can block readiness forever at 100%.
 
 [OUTCOMES]
 - 2026-02-07T23:55:10+08:00 [CODE] `src/App.jsx` renders layered GLBs (outer/inner/fresnel/cap) from `public/models/` with transmission glass, custom fresnel passes, Leva controls, optional HDR/Lightformer environment, stable camera framing, and mobile motion debug (gravity + jerk) plus axis correction.
+- 2026-02-08T11:35:44Z [CODE] Added a simple loading page (progress card) and delayed enabling orbit controls until the models are loaded and placed/rotated.
+- 2026-02-08T11:41:55Z [CODE] Fixed loader deadlock: loading overlay now exits after assets hit 100% and the scene settle frames complete.

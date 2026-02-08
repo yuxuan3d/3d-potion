@@ -7,6 +7,8 @@ import ModelLayer from './ModelLayer.jsx'
 import { PotionInnerRim, PotionOuterFresnel } from './PotionFresnel.jsx'
 import PotionLiquid from './PotionLiquid.jsx'
 
+const DEFAULT_GLASS_QUALITY = { samples: 8, resolution: 2048 }
+
 const baseGlassMaterialProps = {
   color: '#ffffff',
   transmission: 1,
@@ -19,8 +21,6 @@ const baseGlassMaterialProps = {
   distortion: 0,
   distortionScale: 0,
   temporalDistortion: 0,
-  samples: 1,
-  resolution: 1024,
   envMapIntensity: 0.65,
 }
 
@@ -49,23 +49,36 @@ const capMaterialProps = {
   specularColor: '#c49b71',
 }
 
-function PotionOuterGlass(props) {
+function PotionOuterGlass({ glassQuality, ...props }) {
   return (
     <ModelLayer
       url={MODEL_OUTER}
       renderOrder={POTION_RENDER_ORDER.outerGlass}
-      inject={<MeshTransmissionMaterial {...outerGlassMaterialProps} />}
+      inject={(
+        <MeshTransmissionMaterial
+          {...outerGlassMaterialProps}
+          samples={glassQuality.samples}
+          resolution={glassQuality.resolution}
+        />
+      )}
       {...props}
     />
   )
 }
 
-function PotionInnerGlass(props) {
+function PotionInnerGlass({ glassQuality, ...props }) {
   return (
     <ModelLayer
       url={MODEL_INNER}
       renderOrder={POTION_RENDER_ORDER.innerGlass}
-      inject={<MeshTransmissionMaterial {...innerGlassMaterialProps} side={THREE.BackSide} />}
+      inject={(
+        <MeshTransmissionMaterial
+          {...innerGlassMaterialProps}
+          samples={glassQuality.samples}
+          resolution={glassQuality.resolution}
+          side={THREE.BackSide}
+        />
+      )}
       {...props}
     />
   )
@@ -84,6 +97,7 @@ function PotionCap(props) {
 
 export default function PotionBottle({
   rotation,
+  glassQuality = DEFAULT_GLASS_QUALITY,
   outerRimColor,
   outerRimPower,
   outerRimIntensity,
@@ -118,8 +132,8 @@ export default function PotionBottle({
         showDebug={liquidShowDebug}
         gravityWorld={sloshGravityWorld}
       />
-      <PotionOuterGlass />
-      <PotionInnerGlass />
+      <PotionOuterGlass glassQuality={glassQuality} />
+      <PotionInnerGlass glassQuality={glassQuality} />
       <PotionInnerRim
         rimColor={innerRimColor}
         rimPower={innerRimPower}

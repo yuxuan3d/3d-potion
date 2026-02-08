@@ -3,12 +3,14 @@ import './App.css'
 import { Bounds, Center, OrbitControls } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
 import { Leva, useControls } from 'leva'
-import { Suspense, useMemo } from 'react'
+import { Suspense, useCallback, useMemo, useState } from 'react'
 import * as THREE from 'three'
 
 import PotionBottle from './potion/PotionBottle.jsx'
 import SceneEnvironment from './components/SceneEnvironment.jsx'
 import LightformerGizmo from './components/LightformerGizmo.jsx'
+import LoadingScreen from './components/LoadingScreen.jsx'
+import SceneReadySignal from './components/SceneReadySignal.jsx'
 import useDeviceMotionGravity from './hooks/useDeviceMotionGravity.js'
 
 const DEFAULT_HDR_FILE = 'pink_sunrise_1k.hdr'
@@ -17,6 +19,9 @@ const DEFAULT_FRONT_TURN_AXIS = 'z'
 const DEFAULT_FRONT_TURN_DEGREES = -30
 const DEFAULT_MOTION_LOW_PASS_ALPHA = 0.9
 const CANVAS_GL_OPTIONS = { localClippingEnabled: true }
+const BOUNDS_FIT_MAX_DURATION = 0.01
+const GLASS_QUALITY_MOBILE = { samples: 4, resolution: 1024 }
+const GLASS_QUALITY_DESKTOP = { samples: 8, resolution: 2048 }
 
 function formatVector(vector, digits = 2) {
   return `(${vector.map((component) => (Number.isFinite(component) ? component.toFixed(digits) : '0.00')).join(', ')})`
@@ -107,7 +112,7 @@ function useTuningControls() {
 
   const liquid = useControls('Liquid', {
     enabled: true,
-    fill: { value: 0.42, min: 0, max: 1, step: 0.01 },
+    fill: { value:0.6, min: 0, max: 1, step: 0.01 },
     color: '#d10a0a',
     sloshFrequency: { value: 3.7, min: 0.1, max: 8, step: 0.1 },
     sloshDamping: { value: 0.45, min: 0.05, max: 2, step: 0.05 },
@@ -129,6 +134,7 @@ function useTuningControls() {
 }
 
 function App() {
+  const [sceneReady, setSceneReady] = useState(false)
   const {
     envMode,
     envHdrFile,
@@ -139,6 +145,19 @@ function App() {
     innerFresnel,
     liquid,
   } = useTuningControls()
+
+  const isMobileDevice = useMemo(() => {
+    if (typeof window === 'undefined') return false
+
+    const uaMobile = navigator.userAgentData?.mobile
+    if (typeof uaMobile === 'boolean') return uaMobile
+
+    if (typeof window.matchMedia !== 'function') return false
+    if (window.matchMedia('(pointer: coarse)').matches) return true
+    return window.matchMedia('(max-width: 768px)').matches
+  }, [])
+
+  const glassQuality = isMobileDevice ? GLASS_QUALITY_MOBILE : GLASS_QUALITY_DESKTOP
 
   const {
     enabled: lightformerEnabled,
@@ -230,9 +249,14 @@ function App() {
     [lightformerRotationDegrees],
   )
 
+  const handleSceneReady = useCallback(() => {
+    setSceneReady(true)
+  }, [])
+
   return (
     <div className="app">
       <Leva collapsed={false} />
+      <LoadingScreen sceneReady={sceneReady} />
       {showMotionPermissionButton && (
         <button type="button" className="motion-permission-button" onClick={requestMotionPermission}>
           {motionPermissionState === 'denied' ? 'Retry Motion Access' : 'Enable Motion Access'}
@@ -288,10 +312,11 @@ function App() {
         />
 
         <Suspense fallback={null}>
-          <Bounds fit clip margin={2}>
+          <Bounds fit clip margin={2} maxDuration={BOUNDS_FIT_MAX_DURATION}>
             <Center>
               <PotionBottle
                 rotation={bottleRotation}
+                glassQuality={glassQuality}
                 outerRimColor={outerRimColor}
                 outerRimPower={outerRimPower}
                 outerRimIntensity={outerRimIntensity}
@@ -312,9 +337,17 @@ function App() {
               />
             </Center>
           </Bounds>
+          <SceneReadySignal onReady={handleSceneReady} settleFrames={2} />
         </Suspense>
 
-        <OrbitControls makeDefault enableDamping dampingFactor={0.08} minDistance={0.2} maxDistance={10} />
+        <OrbitControls
+          makeDefault
+          enabled={sceneReady}
+          enableDamping
+          dampingFactor={0.08}
+          minDistance={0.2}
+          maxDistance={10}
+        />
       </Canvas>
     </div>
   )
