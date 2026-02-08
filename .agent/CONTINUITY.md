@@ -19,6 +19,7 @@
 - 2026-02-08T11:12:06+08:00 [CODE] Avoid render-time ref access for `hasMotionData`; store the flag in snapshot state so `react-hooks/refs` passes.
 - 2026-02-08T11:21:10+08:00 [CODE] Split dense potion rendering code out of `src/App.jsx` into `src/potion/` modules (`PotionBottle`, `PotionFresnel`, `FresnelRimMaterial`, `ModelLayer`, constants).
 - 2026-02-08T11:33:28+08:00 [CODE] Split `useDeviceMotionGravity` + environment helpers out of `src/App.jsx` into `src/hooks/` + `src/components/` for readability.
+- 2026-02-08T13:34:21+08:00 [CODE] Add a fake liquid layer: slosh plane normal uses a damped spring toward `-gravity` in bottle-local space; fill maps to a sphere plane offset (volume-stable while tilting) and clips a liquid sphere.
 
 [PROGRESS]
 - 2026-02-08T09:11:19+08:00 [CODE] [MILESTONE] Compacted this file into milestones; detailed per-iteration bullets removed to reduce drift/bloat.

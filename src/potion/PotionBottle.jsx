@@ -1,9 +1,11 @@
 import { MeshTransmissionMaterial } from '@react-three/drei'
+import { useRef } from 'react'
 import * as THREE from 'three'
 
 import { MODEL_CAP, MODEL_INNER, MODEL_OUTER, POTION_RENDER_ORDER } from './constants.js'
 import ModelLayer from './ModelLayer.jsx'
 import { PotionInnerRim, PotionOuterFresnel } from './PotionFresnel.jsx'
+import PotionLiquid from './PotionLiquid.jsx'
 
 const baseGlassMaterialProps = {
   color: '#ffffff',
@@ -90,9 +92,32 @@ export default function PotionBottle({
   innerRimPower,
   innerRimIntensity,
   innerRimOpacity,
+  liquidEnabled,
+  liquidFill,
+  liquidColor,
+  liquidRadiusScale,
+  liquidCenterYOffset,
+  liquidSloshFrequency,
+  liquidSloshDamping,
+  liquidShowDebug,
+  sloshGravityWorld,
 }) {
+  const bottleRef = useRef(null)
+
   return (
-    <group rotation={rotation}>
+    <group ref={bottleRef} rotation={rotation}>
+      <PotionLiquid
+        bottleRef={bottleRef}
+        enabled={liquidEnabled}
+        fill={liquidFill}
+        color={liquidColor}
+        radiusScale={liquidRadiusScale}
+        centerYOffset={liquidCenterYOffset}
+        sloshFrequency={liquidSloshFrequency}
+        sloshDamping={liquidSloshDamping}
+        showDebug={liquidShowDebug}
+        gravityWorld={sloshGravityWorld}
+      />
       <PotionOuterGlass />
       <PotionInnerGlass />
       <PotionInnerRim

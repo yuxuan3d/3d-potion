@@ -16,6 +16,7 @@ const DEFAULT_BOTTLE_TILT_X_DEGREES = 25
 const DEFAULT_FRONT_TURN_AXIS = 'z'
 const DEFAULT_FRONT_TURN_DEGREES = -30
 const DEFAULT_MOTION_LOW_PASS_ALPHA = 0.9
+const CANVAS_GL_OPTIONS = { localClippingEnabled: true }
 
 function formatVector(vector, digits = 2) {
   return `(${vector.map((component) => (Number.isFinite(component) ? component.toFixed(digits) : '0.00')).join(', ')})`
@@ -104,6 +105,17 @@ function useTuningControls() {
     innerRimOpacity: { value: 0.54, min: 0, max: 1, step: 0.01 },
   })
 
+  const liquid = useControls('Liquid', {
+    enabled: true,
+    fill: { value: 0.42, min: 0, max: 1, step: 0.01 },
+    color: '#d10a0a',
+    sloshFrequency: { value: 3.7, min: 0.1, max: 8, step: 0.1 },
+    sloshDamping: { value: 0.45, min: 0.05, max: 2, step: 0.05 },
+    centerYOffset: { value: 0.0, min: -0.5, max: 0.5, step: 0.01 },
+    showDebug: false,
+    radiusScale: { value: 1.06, min: 0.5, max: 1.25, step: 0.01 },
+  })
+
   return {
     envMode,
     envHdrFile,
@@ -112,6 +124,7 @@ function useTuningControls() {
     motion,
     outerFresnel,
     innerFresnel,
+    liquid,
   }
 }
 
@@ -124,6 +137,7 @@ function App() {
     motion,
     outerFresnel,
     innerFresnel,
+    liquid,
   } = useTuningControls()
 
   const {
@@ -150,6 +164,16 @@ function App() {
   } = motion
   const { outerRimColor, outerRimPower, outerRimIntensity, outerRimOpacity } = outerFresnel
   const { innerRimColor, innerRimPower, innerRimIntensity, innerRimOpacity } = innerFresnel
+  const {
+    enabled: liquidEnabled,
+    fill: liquidFill,
+    color: liquidColor,
+    radiusScale: liquidRadiusScale,
+    centerYOffset: liquidCenterYOffset,
+    sloshFrequency: liquidSloshFrequency,
+    sloshDamping: liquidSloshDamping,
+    showDebug: liquidShowDebug,
+  } = liquid
 
   const {
     motionSupport,
@@ -227,6 +251,7 @@ function App() {
       <Canvas
         shadows
         dpr={[1, 2]}
+        gl={CANVAS_GL_OPTIONS}
         camera={{ position: [0, 0.2, 2], fov: 38, near: 0.01, far: 100 }}
       >
         <SceneEnvironment
@@ -275,6 +300,15 @@ function App() {
                 innerRimPower={innerRimPower}
                 innerRimIntensity={innerRimIntensity}
                 innerRimOpacity={innerRimOpacity}
+                liquidEnabled={liquidEnabled}
+                liquidFill={liquidFill}
+                liquidColor={liquidColor}
+                liquidRadiusScale={liquidRadiusScale}
+                liquidCenterYOffset={liquidCenterYOffset}
+                liquidSloshFrequency={liquidSloshFrequency}
+                liquidSloshDamping={liquidSloshDamping}
+                liquidShowDebug={liquidShowDebug}
+                sloshGravityWorld={sloshGravityVector}
               />
             </Center>
           </Bounds>

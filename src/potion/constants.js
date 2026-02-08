@@ -4,6 +4,7 @@ export const MODEL_FRESNEL = '/models/PotionBase_fresnel.glb'
 export const MODEL_CAP = '/models/PotionBase_Cap.glb'
 
 export const POTION_RENDER_ORDER = {
+  liquid: 0.5,
   innerGlass: 1,
   outerGlass: 2,
   innerRim: 2.5,
