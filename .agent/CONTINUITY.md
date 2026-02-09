@@ -26,6 +26,13 @@
 - 2026-02-08T13:12:54Z [CODE] Use `Bounds maxDuration` close to zero so the camera fit animation finishes before the loading overlay fades out (prevents perceived “inner bottle snap” from refraction/parallax during camera settle).
 - 2026-02-08T13:21:13Z [CODE] Increase `MeshTransmissionMaterial` `samples` and (outer glass) `resolution` to reduce visible pixelation along transmission/refraction edges.
 - 2026-02-08T13:26:36Z [CODE] Auto-select transmission quality by device: mobile uses `samples=4,resolution=1024`, desktop uses `samples=8,resolution=2048`.
+- 2026-02-08T14:36:11Z [CODE] Switch liquid rendering from a clipped sphere to `public/models/PotionBase_Liquid.glb` so fill can extend into the bottle neck; map `fill` to the liquid mesh height bounds.
+- 2026-02-08T15:08:07Z [CODE] Compute liquid clip surface pivot + cap radius relative to the liquid GLB bounding-box center (x/z) so the surface cap stays aligned and doesn’t overshoot the glass silhouette.
+- 2026-02-09T00:21:55Z [CODE] Use the inner-glass mesh as the liquid depth-mask (BackSide) so the liquid surface/cap can’t render in the glass thickness (prevents “clipping through inner glass”).
+- 2026-02-09T00:34:41Z [CODE] Replace the liquid surface circle cap with a stencil-based clipping cap (backface increment/frontface decrement + plane fill) so the fill surface matches the actual liquid mesh intersection and can’t overshoot the inner glass.
+- 2026-02-09T00:49:23Z [CODE] Outer glass refraction buffer needs a stencil attachment; added a custom transmission wrapper that renders into an FBO with `stencilBuffer: true` so the liquid surface cap stays masked in the transmission pass (prevents “outer bottle reflecting the cap plane” artifacts).
+- 2026-02-09T01:00:30Z [CODE] Fix custom transmission wrapper to keep the outer glass transmissive: don’t restore the GLTF material after the FBO render, and pass the real `transmission` value through (MeshTransmissionMaterial handles `_transmission`/`transmission=0` internally).
+- 2026-02-09T01:11:45Z [CODE] Keep the upstream `MeshTransmissionMaterial` internal FBO allocations tiny (`resolution=1`) since we render into our own stencil-enabled FBO; avoids allocating large unused render targets.
 
 [PROGRESS]
 - 2026-02-08T09:11:19+08:00 [CODE] [MILESTONE] Compacted this file into milestones; detailed per-iteration bullets removed to reduce drift/bloat.
@@ -37,6 +44,7 @@
 - 2026-02-07T23:55:10+08:00 [CODE] Throttle motion-to-React state updates; keep per-event vectors in refs to avoid perf issues in transmissive scenes.
 - 2026-02-08T11:35:44Z [TOOL] Node/npm are available here (`node v24.13.0`, `npm v11.6.2`); verified `npm run lint` and `npm run build` succeed.
 - 2026-02-08T11:41:55Z [CODE] StrictMode effect replay can cancel the first `requestAnimationFrame`; combining cleanup cancel + a one-shot ref can block readiness forever at 100%.
+- 2026-02-08T15:08:07Z [TOOL] In this Codex environment, Node `child_process.spawn*` fails with `EPERM`, so `vite build` (esbuild service) can’t run here; `eslint` still runs when `npm_config_script_shell` is overridden to `cmd.exe` (avoids Git Bash `CreateFileMapping` crash).
 
 [OUTCOMES]
 - 2026-02-07T23:55:10+08:00 [CODE] `src/App.jsx` renders layered GLBs (outer/inner/fresnel/cap) from `public/models/` with transmission glass, custom fresnel passes, Leva controls, optional HDR/Lightformer environment, stable camera framing, and mobile motion debug (gravity + jerk) plus axis correction.

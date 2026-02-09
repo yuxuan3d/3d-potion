@@ -3,42 +3,21 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 
-import { MODEL_INNER, POTION_RENDER_ORDER } from './constants.js'
+import { MODEL_LIQUID, POTION_RENDER_ORDER } from './constants.js'
+import ModelLayer from './ModelLayer.jsx'
 
 const FALLBACK_GRAVITY = [0, -1, 0]
 const SURFACE_GEOMETRY_NORMAL = new THREE.Vector3(0, 0, 1)
+const LIQUID_STENCIL_REF = 0
+const LIQUID_STENCIL_MASK = 0xff
 
 function clamp01(value) {
   if (!Number.isFinite(value)) return 0
   return Math.min(1, Math.max(0, value))
 }
 
-function sphereFillFraction(planeOffset, radius) {
-  const clampedOffset = Math.min(radius, Math.max(-radius, planeOffset))
-  // Height from the bottom of the sphere (0..2R).
-  const height = clampedOffset + radius
-  // Volume below plane / total volume for a sphere, simplified.
-  return ((height ** 2) * (2 * radius - clampedOffset)) / (4 * (radius ** 3))
-}
-
-function solveSpherePlaneOffset(fill, radius) {
-  const clampedFill = clamp01(fill)
-  const safeRadius = Math.max(1e-4, radius)
-
-  if (clampedFill <= 0) return -safeRadius
-  if (clampedFill >= 1) return safeRadius
-
-  let low = -safeRadius
-  let high = safeRadius
-
-  for (let i = 0; i < 28; i += 1) {
-    const mid = (low + high) / 2
-    const fraction = sphereFillFraction(mid, safeRadius)
-    if (fraction < clampedFill) low = mid
-    else high = mid
-  }
-
-  return (low + high) / 2
+function lerp(from, to, t) {
+  return from + (to - from) * t
 }
 
 export default function PotionLiquid({
@@ -53,28 +32,45 @@ export default function PotionLiquid({
   sloshDamping = 0.8,
   showDebug = false,
 }) {
-  const innerGltf = useLoader(GLTFLoader, MODEL_INNER)
-  const volumeRef = useRef(null)
+  const liquidGltf = useLoader(GLTFLoader, MODEL_LIQUID)
   const surfaceRef = useRef(null)
 
-  const innerBounds = useMemo(() => {
-    const scene = innerGltf.scene
+  const liquidShape = useMemo(() => {
+    const scene = liquidGltf.scene
     scene.updateMatrixWorld(true)
 
     const box = new THREE.Box3().setFromObject(scene)
     const size = box.getSize(new THREE.Vector3())
     const center = box.getCenter(new THREE.Vector3())
 
-    // Use a conservative horizontal radius, then bias the center slightly downward.
-    const horizontalRadius = 0.5 * Math.min(size.x, size.z)
-    const radius = Math.max(horizontalRadius * 0.92, 1e-4)
-    const centerY = center.y - size.y * 0.12
+    const minY = box.min.y
+    const maxY = box.max.y
 
-    return { radius, centerY }
-  }, [innerGltf.scene])
+    return {
+      minY,
+      maxY,
+      centerX: center.x,
+      centerY: center.y,
+      centerZ: center.z,
+      capExtent: Math.max(size.x, size.z),
+      horizontalRadius: Math.max(0.5 * Math.max(size.x, size.z), 1e-4),
+    }
+  }, [liquidGltf.scene])
 
-  const radius = Math.max(innerBounds.radius * radiusScale, 1e-4)
-  const centerY = innerBounds.centerY + centerYOffset
+  const liquidScale = Math.max(radiusScale, 1e-4)
+  const radius = Math.max(liquidShape.horizontalRadius * liquidScale, 1e-4)
+  const capExtent = Math.max(liquidShape.capExtent * liquidScale * 1.25, 0.5)
+
+  const centerX = liquidShape.centerX * liquidScale
+  const centerY = (liquidShape.centerY * liquidScale) + centerYOffset
+  const centerZ = liquidShape.centerZ * liquidScale
+  const minFillY = (liquidShape.minY * liquidScale) + centerYOffset
+  const maxFillY = (liquidShape.maxY * liquidScale) + centerYOffset
+
+  const fillHeightY = useMemo(() => {
+    const clampedFill = clamp01(fill)
+    return lerp(minFillY, maxFillY, clampedFill)
+  }, [fill, minFillY, maxFillY])
 
   const clipPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const clippingPlanes = useMemo(() => [clipPlane], [clipPlane])
@@ -102,12 +98,6 @@ export default function PotionLiquid({
     () => new THREE.ArrowHelper(new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 0), 0.4, 0x2aa8ff),
     [],
   )
-
-  const planeOffset = useMemo(() => solveSpherePlaneOffset(fill, radius), [fill, radius])
-  const surfaceRadius = useMemo(() => {
-    const r2 = (radius ** 2) - (planeOffset ** 2)
-    return Math.sqrt(Math.max(r2, 0))
-  }, [radius, planeOffset])
 
   useFrame((_, delta) => {
     if (!enabled) return
@@ -167,8 +157,7 @@ export default function PotionLiquid({
     }
 
     surfacePointLocalRef.current
-      .set(0, centerY, 0)
-      .addScaledVector(sloshNormalLocalRef.current, planeOffset)
+      .set(centerX, fillHeightY, centerZ)
 
     localPlane
       .setFromNormalAndCoplanarPoint(sloshNormalLocalRef.current, surfacePointLocalRef.current)
@@ -183,8 +172,8 @@ export default function PotionLiquid({
     }
 
     if (showDebug) {
-      debugGravityArrow.position.set(0, centerY, 0)
-      debugSloshArrow.position.set(0, centerY, 0)
+      debugGravityArrow.position.set(centerX, centerY, centerZ)
+      debugSloshArrow.position.set(centerX, centerY, centerZ)
 
       debugDirRef.current.copy(gravityLocalVectorRef.current).normalize()
       debugGravityArrow.setDirection(debugDirRef.current)
@@ -195,46 +184,84 @@ export default function PotionLiquid({
       debugGravityArrow.setLength(Math.max(radius * 1.15, 0.15))
       debugSloshArrow.setLength(Math.max(radius * 1.15, 0.15))
     }
-
-    if (volumeRef.current) {
-      volumeRef.current.renderOrder = POTION_RENDER_ORDER.liquid
-    }
   })
 
   if (!enabled) return null
 
   return (
     <group>
-      <mesh
-        ref={volumeRef}
-        position={[0, centerY, 0]}
-        scale={radius}
-        renderOrder={POTION_RENDER_ORDER.liquid}
-        castShadow={false}
-        receiveShadow={false}
-      >
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshPhysicalMaterial
-          color={color}
-          roughness={0.14}
-          metalness={0}
-          clearcoat={1}
-          clearcoatRoughness={0.08}
-          envMapIntensity={0.35}
-          toneMapped
-          clippingPlanes={clippingPlanes}
-          side={THREE.DoubleSide}
+      <group position={[0, centerYOffset, 0]} scale={liquidScale}>
+        <ModelLayer
+          url={MODEL_LIQUID}
+          renderOrder={POTION_RENDER_ORDER.liquid - 0.02}
+          castShadow={false}
+          receiveShadow={false}
+          inject={(
+            <meshBasicMaterial
+              side={THREE.BackSide}
+              clippingPlanes={clippingPlanes}
+              colorWrite={false}
+              depthWrite={false}
+              stencilWrite
+              stencilRef={LIQUID_STENCIL_REF}
+              stencilFunc={THREE.AlwaysStencilFunc}
+              stencilFuncMask={LIQUID_STENCIL_MASK}
+              stencilFail={THREE.KeepStencilOp}
+              stencilZFail={THREE.KeepStencilOp}
+              stencilZPass={THREE.IncrementWrapStencilOp}
+            />
+          )}
         />
-      </mesh>
+        <ModelLayer
+          url={MODEL_LIQUID}
+          renderOrder={POTION_RENDER_ORDER.liquid - 0.01}
+          castShadow={false}
+          receiveShadow={false}
+          inject={(
+            <meshBasicMaterial
+              side={THREE.FrontSide}
+              clippingPlanes={clippingPlanes}
+              colorWrite={false}
+              depthWrite={false}
+              stencilWrite
+              stencilRef={LIQUID_STENCIL_REF}
+              stencilFunc={THREE.AlwaysStencilFunc}
+              stencilFuncMask={LIQUID_STENCIL_MASK}
+              stencilFail={THREE.KeepStencilOp}
+              stencilZFail={THREE.KeepStencilOp}
+              stencilZPass={THREE.DecrementWrapStencilOp}
+            />
+          )}
+        />
+        <ModelLayer
+          url={MODEL_LIQUID}
+          renderOrder={POTION_RENDER_ORDER.liquid}
+          castShadow={false}
+          receiveShadow={false}
+          inject={(
+            <meshPhysicalMaterial
+              color={color}
+              roughness={0.14}
+              metalness={0}
+              clearcoat={1}
+              clearcoatRoughness={0.08}
+              envMapIntensity={0.35}
+              toneMapped
+              clippingPlanes={clippingPlanes}
+              side={THREE.DoubleSide}
+            />
+          )}
+        />
+      </group>
 
       <mesh
         ref={surfaceRef}
-        scale={[surfaceRadius, surfaceRadius, 1]}
-        renderOrder={POTION_RENDER_ORDER.liquid + 0.01}
+        scale={[capExtent, capExtent, 1]}
+        renderOrder={POTION_RENDER_ORDER.liquid + 0.02}
         castShadow={false}
         receiveShadow={false}
       >
-        <circleGeometry args={[1, 64]} />
+        <planeGeometry args={[1, 1]} />
         <meshPhysicalMaterial
           color={color}
           roughness={0.06}
@@ -244,6 +271,13 @@ export default function PotionLiquid({
           envMapIntensity={0.6}
           toneMapped
           side={THREE.DoubleSide}
+          stencilWrite
+          stencilRef={LIQUID_STENCIL_REF}
+          stencilFunc={THREE.NotEqualStencilFunc}
+          stencilFuncMask={LIQUID_STENCIL_MASK}
+          stencilFail={THREE.KeepStencilOp}
+          stencilZFail={THREE.KeepStencilOp}
+          stencilZPass={THREE.KeepStencilOp}
         />
       </mesh>
 

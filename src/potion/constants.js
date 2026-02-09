@@ -2,6 +2,7 @@ export const MODEL_OUTER = '/models/PotionBase_outer.glb'
 export const MODEL_INNER = '/models/PotionBase_inner.glb'
 export const MODEL_FRESNEL = '/models/PotionBase_fresnel.glb'
 export const MODEL_CAP = '/models/PotionBase_Cap.glb'
+export const MODEL_LIQUID = '/models/PotionBase_Liquid.glb'
 
 export const POTION_RENDER_ORDER = {
   liquid: 0.5,

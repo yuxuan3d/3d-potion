@@ -18,7 +18,7 @@ const DEFAULT_BOTTLE_TILT_X_DEGREES = 25
 const DEFAULT_FRONT_TURN_AXIS = 'z'
 const DEFAULT_FRONT_TURN_DEGREES = -30
 const DEFAULT_MOTION_LOW_PASS_ALPHA = 0.9
-const CANVAS_GL_OPTIONS = { localClippingEnabled: true }
+const CANVAS_GL_OPTIONS = { stencil: true }
 const BOUNDS_FIT_MAX_DURATION = 0.01
 const GLASS_QUALITY_MOBILE = { samples: 4, resolution: 1024 }
 const GLASS_QUALITY_DESKTOP = { samples: 8, resolution: 2048 }
@@ -118,7 +118,7 @@ function useTuningControls() {
     sloshDamping: { value: 0.45, min: 0.05, max: 2, step: 0.05 },
     centerYOffset: { value: 0.0, min: -0.5, max: 0.5, step: 0.01 },
     showDebug: false,
-    radiusScale: { value: 1.06, min: 0.5, max: 1.25, step: 0.01 },
+    radiusScale: { value: 1.0, min: 0.5, max: 1.25, step: 0.01 },
   })
 
   return {
@@ -253,6 +253,10 @@ function App() {
     setSceneReady(true)
   }, [])
 
+  const handleCanvasCreated = useCallback(({ gl }) => {
+    gl.localClippingEnabled = true
+  }, [])
+
   return (
     <div className="app">
       <Leva collapsed={false} />
@@ -276,6 +280,7 @@ function App() {
         shadows
         dpr={[1, 2]}
         gl={CANVAS_GL_OPTIONS}
+        onCreated={handleCanvasCreated}
         camera={{ position: [0, 0.2, 2], fov: 38, near: 0.01, far: 100 }}
       >
         <SceneEnvironment

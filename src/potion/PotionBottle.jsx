@@ -6,6 +6,7 @@ import { MODEL_CAP, MODEL_INNER, MODEL_OUTER, POTION_RENDER_ORDER } from './cons
 import ModelLayer from './ModelLayer.jsx'
 import { PotionInnerRim, PotionOuterFresnel } from './PotionFresnel.jsx'
 import PotionLiquid from './PotionLiquid.jsx'
+import PotionTransmissionMaterial from './PotionTransmissionMaterial.jsx'
 
 const DEFAULT_GLASS_QUALITY = { samples: 8, resolution: 2048 }
 
@@ -55,7 +56,7 @@ function PotionOuterGlass({ glassQuality, ...props }) {
       url={MODEL_OUTER}
       renderOrder={POTION_RENDER_ORDER.outerGlass}
       inject={(
-        <MeshTransmissionMaterial
+        <PotionTransmissionMaterial
           {...outerGlassMaterialProps}
           samples={glassQuality.samples}
           resolution={glassQuality.resolution}
